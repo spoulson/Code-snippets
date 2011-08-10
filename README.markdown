@@ -13,6 +13,11 @@ FILE LISTING
    More efficient than Directory.GetFiles() for directories containing large numbers of files.
  - ExecuteWithTimeout.cs  
    Extension method to invoke a delegate and throw a timeout exception if the code runs for longer than expected.
+   
+### C++
+ - Command Line Parser  
+   Template based approach to defining command line options model and parsing from argc/argv.  
+   Source: DevelopMentor, http://www.develop.com/
 
 ### Javascript
  - Decimal math.js  
