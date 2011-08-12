@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script type="text/javascript" src="jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="wirelib_0.2.js"></script>
+    <script type="text/javascript">
+        $(function () {
+            var wl = new Wirelib($('#canvas1')[0]);
+            wl.clearCanvas = false;
+            wl.strokeStyle = '#ff0000';
+            wl.lineWidth = '1.5';
+            wl.addCube(0, 0, 0, 300, 300, 300);
+
+            var wl2 = new Wirelib($('#canvas1')[0]);
+            wl2.strokeStyle = '#8f1f2f';
+            wl2.lineWidth = '2';
+            wl2.addCube(0, 0, 0, 100, 100, 100);
+            
+            var frameCounter = 0;
+            var animDelay = 50;
+            var moveRange = 5;
+            wl.loop(24, function () {
+                wl.rotateY(0.05);
+                wl.rotateX(0.02);
+                
+                var translateRate = Math.cos((frameCounter % (animDelay * 2) - animDelay) / animDelay * 3.14);
+                var translateX = translateRate * moveRange;
+                var translateY = translateRate * moveRange * 3 / 2;
+                wl.translate(translateX, translateY, 0);
+                
+                wl2.rotateY(0.05);
+                wl2.rotateX(0.02);
+                wl2.translate(translateX, translateY, 0);
+                    
+                wl2.draw();
+                    
+                frameCounter++;
+            });
+            
+        });
+    </script>
+</head>
+<body>
+    <canvas id="canvas1" width="800" height="600"></canvas>
+</body>
+</html>
