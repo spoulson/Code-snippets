@@ -25,6 +25,7 @@ FILE LISTING
    quad.html: texture mapped 3D quad rotating.  
    cube.html: texture mapped 3D cube rotating.  
    cube2.html: cube.html, but mouse controls rotation.  
+   Works for IE9, FF3+, Chrome, and Safari.  Chrome performs best with least rendering artifacts.  
    Source: http://tulrich.com/geekstuff/canvas/perspective.html  
  - WirelibJS  
    Simplified wireframe 3D graphics library for HTML5 canvas with an example page.
