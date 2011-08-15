@@ -478,10 +478,31 @@
                 drawPerspectiveTri = options.clip_z ? drawPerspectiveTriClipped : drawPerspectiveTriUnclipped;
                 
                 // Render loop.
+                var lastFrameTime = (new Date()).getTime();
+                var lastFrameCounter = 0;
+                var maxFps, minFps;
                 setInterval(function () {
                     var now = (new Date()).getTime();
                     var dt = lastTime === undefined ? 0 : now - lastTime;
                     lastTime = now;
+                    
+                    // Calculate FPS.
+                    if (now - lastFrameTime > 200) {
+                        var frameTime = now - lastFrameTime;
+                        var fps = frameTime == 0 ? 0 : (frameCounter - lastFrameCounter) / frameTime * 1000;
+                        document.getElementById('fps').innerHTML = fps.toFixed(2);
+                        if (maxFps === undefined || fps > maxFps) {
+                            maxFps = fps;
+                            document.getElementById('maxFps').innerHTML = maxFps.toFixed(2);
+                        }
+                        if (minFps === undefined || fps < minFps) {
+                            minFps = fps;
+                            document.getElementById('minFps').innerHTML = minFps.toFixed(2);
+                        }
+                        lastFrameTime = now;
+                        lastFrameCounter = frameCounter;
+                    }
+                    
                     if (dt > 100) dt = 100;
                     
                     //object_omega = jsgl.vectorScale(object_omega, 0.95);
@@ -492,17 +513,6 @@
                     
                     frameCounter++;
                 }, 0);
-                
-                // FPS counter.
-                var lastFrameCounter;
-                setInterval(function () {
-                    var dfc = lastFrameCounter === undefined ? -1 : frameCounter - lastFrameCounter;
-                    lastFrameCounter = frameCounter;
-                    if (dfc == -1) return;
-                    
-                    var fps = dfc * 1000 / 250;
-                    document.getElementById('fps').innerHTML = fps;
-                }, 250);
             };
 
             // Load texture image, then initialize animation.
@@ -515,6 +525,8 @@
 <body>
     <canvas id="canvas1" width="800" height="600"></canvas>
     <br/>
-    FPS: <span id="fps">-</span>
+    FPS: <span id="fps">-</span><br />
+    Min FPS: <span id="minFps">-</span><br />
+    Max FPS: <span id="maxFps">-</span>
 </body>
 </html>
