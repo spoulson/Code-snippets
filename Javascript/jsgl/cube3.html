@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+    <script type="text/javascript" src="jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="jsgl.js"></script>
+    <script type="text/javascript" src="jsgl-scene3.js"></script>
+    <script type="text/javascript">
+        // Adapted from: http://tulrich.com/geekstuff/canvas/perspective.html
+        
+        $(function () {
+            var canvas_elem = document.getElementById('canvas1');
+            var ctx = canvas_elem.getContext('2d');
+            var c3d = new jsgl.Context(ctx);
+            var image1;
+            var frameCounter = 0;
+            var mouse_sensitivity = 40.0;
+            var temp_mat0 = jsgl.makeIdentityAffine();
+            var temp_mat1 = jsgl.makeIdentityAffine();
+            var distance = 3;
+            
+            var draw = function () {
+                // Clear.
+                ctx.globalAlpha = jsglscene.whiteout_alpha;
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, canvas_elem.width, canvas_elem.height);
+                ctx.globalAlpha = 1;
+                
+                var view_mat = jsgl.makeViewFromOrientation(jsglscene.camera_mat);
+
+                // Update view transform.
+                jsgl.multiplyAffineTo(jsglscene.proj_mat, view_mat, temp_mat0);
+                
+                // Render.
+                for (var oi = 0; oi < jsglscene.objects.length; oi++) {
+                    var object = jsglscene.objects[oi];
+                    jsgl.multiplyAffineTo(temp_mat0, object.matrix, temp_mat1);
+                    c3d.setTransform(temp_mat1);
+
+                    // Transform all vertices.
+                    var tverts = [];
+                    for (var vi = 0; vi < object.verts.length; vi++) {
+                        var v = object.verts[vi];
+                        tverts.push(jsgl.transformPoint(c3d.transform_, v));
+                    }
+
+                    // Render tris.
+                    /*object.tris.sort(function (a, b) {
+                        return tverts[a[0].vert].z >= tverts[b[0].vert].z ? 1 : -1;
+                    });*/
+                    for (var ti = 0; ti < object.tris.length; ti++) {
+                        var tri = object.tris[ti];
+                        var tv0 = tverts[tri[0].vert];
+                        var tv1 = tverts[tri[1].vert];
+                        var tv2 = tverts[tri[2].vert];
+                        
+                        // http://www.kirupa.com/developer/actionscript/backface_culling.htm
+                        var ptv0 = jsgl.projectPoint(tv0);
+                        var ptv1 = jsgl.projectPoint(tv1);
+                        var ptv2 = jsgl.projectPoint(tv2);
+
+                        if (
+                            (((ptv1.y - ptv0.y) / (ptv1.x - ptv0.x) - (ptv2.y - ptv0.y) / (ptv2.x - ptv0.x)) < 0)
+                            ^ ((ptv0.x <= ptv1.x) == (ptv0.x > ptv2.x))
+                        ) {
+                            // Render face.
+                            var ctri = [
+                                {x: tv0.x, y: tv0.y, z: tv0.z, u: tri[0].u, v: tri[0].v},
+                                {x: tv1.x, y: tv1.y, z: tv1.z, u: tri[1].u, v: tri[1].v},
+                                {x: tv2.x, y: tv2.y, z: tv2.z, u: tri[2].u, v: tri[2].v}
+                            ];
+
+                            jsglscene.drawPerspectiveTri(c3d, object.image, ctri[0], ctri[1], ctri[2], jsglscene.nonadaptive_depth);
+                        }
+                    }
+                }
+            };
+
+            var init = function () {
+                // Setup UI.
+                var mouseDownFlag = false;
+                var mouseX, mouseY;
+
+                $(canvas_elem)
+                    .mousedown(function (event) {
+                        if (event.button == 0) {
+                            mouseDownFlag = true;
+                            mouseX = event.pageX;
+                            mouseY = event.pageY;
+                        }
+                    })
+                    .mouseup(function (event) {
+                        if (event.button == 0) {
+                            mouseDownFlag = false;
+                        }
+                    })
+                    .mousemove(function (event) {
+                        if (mouseDownFlag) {
+                            var dx = event.pageX - mouseX;
+                            var dy = event.pageY - mouseY;
+                            mouseX = event.pageX;
+                            mouseY = event.pageY;
+
+                            if (event.ctrlKey) {
+                                // Zoom.
+                                distance -= dy * mouse_sensitivity / 1400;
+                                jsglscene.setOrientation(distance);
+                            }
+                            else {
+                                // Rotate X/Y or Z/Y.
+                                var divisor = mouse_sensitivity * 2 * Math.PI;
+                                var xangle = dy / divisor;
+                                var yangle = event.shiftKey ? 0 : (dx / divisor);
+                                var zangle = event.shiftKey ? (-dx / divisor) : 0;
+
+                                for (var oi = 0; oi < jsglscene.objects.length; oi++) {
+                                    jsglscene.rotateObject(jsglscene.objects[oi], xangle, yangle, zangle);
+                                }
+                            }
+                        }
+                    });
+                
+                // Setup renderer.
+                jsglscene.setOrientation(distance);
+                jsglscene.setProjection(canvas_elem.width, canvas_elem.height, Math.PI / 2);
+
+                // Define 3d scene.
+                var im_width = image1.width;
+                var im_height = image1.height;
+
+                var cube1 = {
+                    matrix: jsgl.makeOrientationAffine({ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 0, y: -1, z: 0 }),
+                    image: image1,
+                    verts: [
+                        {x: 0.5, y: -1, z: 1},
+                        {x: 2.5, y: -1, z: 1},
+                        {x: 2.5, y: 1, z: 1},
+                        {x: 0.5, y: 1, z: 1},
+                        {x: 0.5, y: -1, z: -1},
+                        {x: 2.5, y: -1, z: -1},
+                        {x: 2.5, y: 1, z: -1},
+                        {x: 0.5, y: 1, z: -1}
+                    ],
+                    tris: [
+                        // back face.
+                        [
+                            {vert: 0, u: 0, v: 0},
+                            {vert: 2, u: im_width, v: im_height},
+                            {vert: 1, u: im_width, v: 0}
+                        ],
+                        [
+                            {vert: 0, u: 0, v: 0},
+                            {vert: 3, u: 0, v: im_height},
+                            {vert: 2, u: im_width, v: im_height}
+                        ],
+                        // front face.
+                        [
+                            {vert: 4, u: 0, v: 0},
+                            {vert: 5, u: im_width, v: 0},
+                            {vert: 6, u: im_width, v: im_height}
+                        ],
+                        [
+                            {vert: 4, u: 0, v: 0},
+                            {vert: 6, u: im_width, v: im_height},
+                            {vert: 7, u: 0, v: im_height}
+                        ],
+                        // left face.
+                        [
+                            {vert: 0, u: 0, v: 0},
+                            {vert: 7, u: im_width, v: im_height},
+                            {vert: 3, u: 0, v: im_height}
+                        ],
+                        [
+                            {vert: 0, u: 0, v: 0},
+                            {vert: 4, u: im_width, v: 0},
+                            {vert: 7, u: im_width, v: im_height}
+                        ],
+                        // right face.
+                        [
+                            {vert: 1, u: im_width, v: 0},
+                            {vert: 2, u: im_width, v: im_height},
+                            {vert: 6, u: 0, v: im_height}
+                        ],
+                        [
+                            {vert: 1, u: im_width, v: 0},
+                            {vert: 6, u: 0, v: im_height},
+                            {vert: 5, u: 0, v: 0},
+                        ],
+                        // top face.
+                        [
+                            {vert: 5, u: im_width, v: im_height},
+                            {vert: 4, u: 0, v: im_height},
+                            {vert: 1, u: im_width, v: 0}
+                        ],
+                        [
+                            {vert: 0, u: 0, v: 0},
+                            {vert: 1, u: im_width, v: 0},
+                            {vert: 4, u: 0, v: im_height}
+                        ],
+                        // bottom face.
+                        [
+                            {vert: 7, u: 0, v: 0},
+                            {vert: 6, u: im_width, v: 0},
+                            {vert: 2, u: im_width, v: im_height}
+                        ],
+                        [
+                            {vert: 3, u: 0, v: im_height},
+                            {vert: 7, u: 0, v: 0},
+                            {vert: 2, u: im_width, v: im_height}
+                        ]
+                    ]
+                };
+
+                var cube2 = {
+                    matrix: jsgl.makeOrientationAffine({ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 0, y: -1, z: 0 }),
+                    image: image1,
+                    verts: [
+                        {x: -2.5, y: -1, z: 1},
+                        {x: -0.5, y: -1, z: 1},
+                        {x: -0.5, y: 1, z: 1},
+                        {x: -2.5, y: 1, z: 1},
+                        {x: -2.5, y: -1, z: -1},
+                        {x: -0.5, y: -1, z: -1},
+                        {x: -0.5, y: 1, z: -1},
+                        {x: -2.5, y: 1, z: -1}
+                    ],
+                    tris: [
+                        // back face.
+                        [
+                            {vert: 0, u: 0, v: 0},
+                            {vert: 2, u: im_width, v: im_height},
+                            {vert: 1, u: im_width, v: 0}
+                        ],
+                        [
+                            {vert: 0, u: 0, v: 0},
+                            {vert: 3, u: 0, v: im_height},
+                            {vert: 2, u: im_width, v: im_height}
+                        ],
+                        // front face.
+                        [
+                            {vert: 4, u: 0, v: 0},
+                            {vert: 5, u: im_width, v: 0},
+                            {vert: 6, u: im_width, v: im_height}
+                        ],
+                        [
+                            {vert: 4, u: 0, v: 0},
+                            {vert: 6, u: im_width, v: im_height},
+                            {vert: 7, u: 0, v: im_height}
+                        ],
+                        // left face.
+                        [
+                            {vert: 0, u: 0, v: 0},
+                            {vert: 7, u: im_width, v: im_height},
+                            {vert: 3, u: 0, v: im_height}
+                        ],
+                        [
+                            {vert: 0, u: 0, v: 0},
+                            {vert: 4, u: im_width, v: 0},
+                            {vert: 7, u: im_width, v: im_height}
+                        ],
+                        // right face.
+                        [
+                            {vert: 1, u: im_width, v: 0},
+                            {vert: 2, u: im_width, v: im_height},
+                            {vert: 6, u: 0, v: im_height}
+                        ],
+                        [
+                            {vert: 1, u: im_width, v: 0},
+                            {vert: 6, u: 0, v: im_height},
+                            {vert: 5, u: 0, v: 0},
+                        ],
+                        // top face.
+                        [
+                            {vert: 5, u: im_width, v: im_height},
+                            {vert: 4, u: 0, v: im_height},
+                            {vert: 1, u: im_width, v: 0}
+                        ],
+                        [
+                            {vert: 0, u: 0, v: 0},
+                            {vert: 1, u: im_width, v: 0},
+                            {vert: 4, u: 0, v: im_height}
+                        ],
+                        // bottom face.
+                        [
+                            {vert: 7, u: 0, v: 0},
+                            {vert: 6, u: im_width, v: 0},
+                            {vert: 2, u: im_width, v: im_height}
+                        ],
+                        [
+                            {vert: 3, u: 0, v: im_height},
+                            {vert: 7, u: 0, v: 0},
+                            {vert: 2, u: im_width, v: im_height}
+                        ]
+                    ]
+                };
+                
+                jsglscene.objects.push(cube1);
+                jsglscene.objects.push(cube2);
+
+                // Render loop.
+                var lastFrameTime = (new Date()).getTime();
+                var lastFrameCounter = 0;
+                var maxFps, minFps;
+                setInterval(function () {
+                    var now = (new Date()).getTime();
+                    var dt = now - lastFrameTime;
+
+                    // Calculate FPS every so often.
+                    if (dt > 200) {
+                        var fps = (frameCounter - lastFrameCounter) / dt * 1000;
+                        document.getElementById('fps').innerHTML = fps.toFixed(2);
+                        if (maxFps === undefined || fps > maxFps) {
+                            maxFps = fps;
+                            document.getElementById('maxFps').innerHTML = maxFps.toFixed(2);
+                        }
+                        if (minFps === undefined || fps < minFps) {
+                            minFps = fps;
+                            document.getElementById('minFps').innerHTML = minFps.toFixed(2);
+                        }
+                        lastFrameTime = now;
+                        lastFrameCounter = frameCounter;
+                    }
+
+                    draw();
+                    
+                    frameCounter++;
+                }, 0);
+            };
+
+            // Load texture image, then initialize animation.
+            image1 = new Image();
+            image1.onload = init;
+            image1.src = 'sjRk7.jpg';
+        });
+    </script>
+</head>
+<body>
+    <canvas id="canvas1" width="800" height="600"></canvas>
+    <div>
+        <div style="float:left;width:300px">
+            FPS: <span id="fps">-</span><br />
+            Min FPS: <span id="minFps">-</span><br />
+            Max FPS: <span id="maxFps">-</span>
+        </div>
+        <div>
+            Drag mouse to rotate X/Y.<br />
+            Shift+Drag to rotate Z/Y.<br />
+            Control+Drag to zoom.
+        </div>
+    </div>
+</body>
+</html>

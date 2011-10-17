@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <link rel="stylesheet" type="text/css" href="style.css" />
     <script type="text/javascript" src="jquery-1.6.2.min.js"></script>
     <script type="text/javascript" src="jsgl.js"></script>
     <script type="text/javascript">
@@ -308,11 +309,9 @@
                     var ptv1 = jsgl.projectPoint(tv1);
                     var ptv2 = jsgl.projectPoint(tv2);
                     
-                    if (ptv1.x == ptv0.x || ptv2.x == ptv0.x) continue;
                     if (
-                        ptv1.x != ptv0.x &&
-                        ptv2.x != ptv0.x &&
-                        (((ptv1.y - ptv0.y) / (ptv1.x - ptv0.x) - (ptv2.y - ptv0.y) / (ptv2.x - ptv0.x)) < 0) ^ ((ptv0.x <= ptv1.x) == (ptv0.x > ptv2.x))
+                        (((ptv1.y - ptv0.y) / (ptv1.x - ptv0.x) - (ptv2.y - ptv0.y) / (ptv2.x - ptv0.x)) < 0)
+                        ^ ((ptv0.x <= ptv1.x) == (ptv0.x > ptv2.x))
                     ) {
                         // Render face.
                         var ctri = [
