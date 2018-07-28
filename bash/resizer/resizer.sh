@@ -11,5 +11,5 @@ mkdir -p resized
 
 for filename in *.jpg; do
     NEWNAME=$(cat /dev/urandom | env LC_CTYPE=C tr -dc 'a-zA-Z0-9' | head -c 8)
-    convert "$filename" -resize 1200x -write resized/"${NEWNAME}"_960x.jpg
+    convert "$filename" -resize ${WIDTH}x -write resized/"${NEWNAME}"_${WIDTH}x.jpg
 done
